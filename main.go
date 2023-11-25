@@ -15,8 +15,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/api/v1", http.HandlerFunc(routes.Serve))
-	mux.Handle("/api/v1/", http.HandlerFunc(routes.Serve))
-
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1/", http.HandlerFunc(routes.Serve)))
+	
 	p := configs.GetServerPort()
 
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", p))
