@@ -22,7 +22,7 @@ type config struct {
 func init() {
 	logger = NewLogger("config")
 
-	cfgFile, err := os.Open("config.json")
+	cfgFile, err := os.Open("configs/config.json")
 
 	if err != nil {
 		logger.Errorf("error while opening config.json file: %s", err.Error())
