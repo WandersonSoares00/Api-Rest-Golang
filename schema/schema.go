@@ -16,11 +16,12 @@ type Gravadora struct {
 }
 
 type Album struct {
-	Cod    int       `json:"cod"`
-	Desc   string    `json:"descricao"`
-	DtGrav time.Time `json:"dtgrav"`
-	PrComp float32   `json:"prcompra"`
-	PrVen  float32   `json:"prvenda"`
+	Cod     int64     `json:"cod"`
+	CodDown int64     `json:"codDown"`
+	Desc    string    `json:"descricao"`
+	DtGrav  time.Time `json:"dtGrav"`
+	PrComp  float32   `json:"prCompra"`
+	PrVen   float32   `json:"prVenda"`
 }
 
 type Composicao struct {
@@ -30,15 +31,20 @@ type Composicao struct {
 }
 
 type Faixa struct {
-	Cod    int           `json:"cod"`
-	Num    int           `json:"numero"`
-	Desc   string        `json:"descricao"`
-	TExec  time.Duration `json:"tempexec"`
-	TpGrav string        `json:"tipogravacao"`
+	Cod     int           `json:"cod"`
+	CodCd   int64         `json:"codCd"`
+	CodVin  int64         `json:"codVinil"`
+	CodDown int64         `json:"codDown"`
+	CodComp int64         `json:"codComp"`
+	Num     int           `json:"numero"`
+	Desc    string        `json:"descricao"`
+	TExec   time.Duration `json:"tempexec"`
+	TpGrav  string        `json:"tipogravacao"`
 }
 
 type Compositor struct {
 	Cod    int       `json:"cod"`
+	CodPm  int64     `json:"codPm"`
 	Nome   string    `json:"nome"`
 	DtNasc time.Time `json:"dtnascimento"`
 	DtMort time.Time `json:"dtmorte,omitempty"`
@@ -55,25 +61,4 @@ type Interprete struct {
 	Cod  int    `json:"cod"`
 	Nome string `json:"nome"`
 	Tipo string `json:"tipo"`
-}
-
-func GetTable(t string) interface{} {
-	switch t {
-	case "gravadoras":
-		return Gravadora{}
-	case "albuns":
-		return Album{}
-	case "composicoes":
-		return Composicao{}
-	case "faixa":
-		return Faixa{}
-	case "compositores":
-		return Compositor{}
-	case "playlists":
-		return Playlist{}
-	case "interpretes":
-		return Interprete{}
-	default:
-		return nil
-	}
 }
