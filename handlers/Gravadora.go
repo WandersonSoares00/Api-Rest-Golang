@@ -9,7 +9,9 @@ import (
 	"github.com/WandersonSoares00/Api-Rest-Golang.git/schema"
 )
 
-func GetAllGravadora(w http.ResponseWriter) error {
+type Gravadora schema.Gravadora
+
+func (g Gravadora) GetAll(w http.ResponseWriter) error {
 	conn, err := db.OpenConnection()
 
 	if err != nil {
@@ -24,10 +26,9 @@ func GetAllGravadora(w http.ResponseWriter) error {
 		return err
 	}
 
-	var gravadoras []schema.Gravadora
+	var gravadoras []Gravadora
 
 	for rows.Next() {
-		var g schema.Gravadora
 
 		err = rows.Scan(&g.Cod, &g.Nome, &g.Ender, &g.HomeP)
 
@@ -52,7 +53,7 @@ func GetAllGravadora(w http.ResponseWriter) error {
 	return nil
 }
 
-func GetGravadora(w http.ResponseWriter, id int64) error {
+func (g Gravadora) Get(w http.ResponseWriter, id int64) error {
 	conn, err := db.OpenConnection()
 
 	if err != nil {
@@ -63,7 +64,7 @@ func GetGravadora(w http.ResponseWriter, id int64) error {
 
 	row := conn.QueryRow(`SELECT cod_grav, nome, endereco, end_homep FROM gravadora WHERE cod_grav=$1`, id)
 
-	var g schema.Gravadora
+	//var g schema.Gravadora
 	err = row.Scan(&g.Cod, &g.Nome, &g.Ender, &g.HomeP)
 
 	if err != nil {
@@ -86,8 +87,8 @@ func GetGravadora(w http.ResponseWriter, id int64) error {
 	return nil
 }
 
-func CreateGravadora(w http.ResponseWriter, r *http.Request) error {
-	var g schema.Gravadora
+func (g Gravadora) Create(w http.ResponseWriter, r *http.Request) error {
+	//var g schema.Gravadora
 
 	if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "invalid input data"))
@@ -117,8 +118,8 @@ func CreateGravadora(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func UpdateGravadora(w http.ResponseWriter, r *http.Request, id int64) error {
-	var g schema.Gravadora
+func (g Gravadora) Update(w http.ResponseWriter, r *http.Request, id int64) error {
+	//var g schema.Gravadora
 
 	if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
@@ -155,7 +156,7 @@ func UpdateGravadora(w http.ResponseWriter, r *http.Request, id int64) error {
 	return err
 }
 
-func DeleteGravadora(w http.ResponseWriter, id int64) error {
+func (g Gravadora) Delete(w http.ResponseWriter, id int64) error {
 
 	conn, err := db.OpenConnection()
 
