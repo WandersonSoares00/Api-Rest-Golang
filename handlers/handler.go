@@ -5,6 +5,21 @@ import (
 	"net/http"
 )
 
+type Entity interface {
+	GetAll(w http.ResponseWriter) error
+	Get(w http.ResponseWriter, id int64) error
+	Create(w http.ResponseWriter, r *http.Request) error
+	Update(w http.ResponseWriter, r *http.Request, id int64) error
+	Delete(w http.ResponseWriter, id int64) error
+}
+
+func GetEntity(str string) Entity {
+	switch str {
+	case "gravadoras":	return Gravadora{}
+	default:			return nil
+	}
+}
+
 func init() {
 }
 
