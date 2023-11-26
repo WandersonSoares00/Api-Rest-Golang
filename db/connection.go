@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/WandersonSoares00/Api-Rest-Golang.git/configs"
-	_ "github.com/lib/pq"
 )
 
 func OpenConnection() (*sql.DB, error) {
