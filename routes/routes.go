@@ -18,28 +18,45 @@ func init() {
 }
 
 func Serve(w http.ResponseWriter, r *http.Request) {
-	//var h http.Handler
 
-	//var s string
+	var entity string
 	var id int64
 	var err error = nil
 	p := r.URL.Path
 
-	//[a-z]+\b
-
 	start := time.Now()
 
 	switch {
-	case match(p, "^gravadoras/?$") && r.Method == "GET":
-		err = handlers.GetAllGravadora(w)
-	case match(p, "^gravadoras/\\d+$", &id) && r.Method == "GET":
-		err = handlers.GetGravadora(w, id)
-	case match(p, "^gravadoras/?$") && r.Method == http.MethodPost:
-		err = handlers.CreateGravadora(w, r)
-	case match(p, "^gravadoras/\\d+$", &id) && r.Method == http.MethodDelete:
-		err = handlers.DeleteGravadora(w, id)
-	case match(p, "^gravadoras/\\d+$", &id) && r.Method == http.MethodPut:
-		err = handlers.UpdateGravadora(w, r, id)
+	case match(p, "^([a-z]+)/?$", &entity):
+		t := handlers.GetEntity(entity)
+
+		if t == nil {
+			msg := fmt.Sprintf("Entidade %s requisitada não definida", entity)
+			handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, msg))
+		} else if r.Method == http.MethodGet {
+			err = t.GetAll(w)
+		} else if r.Method == http.MethodPost {
+			err = t.Create(w, r)
+		} else {
+			msg := "Método e requisição solicitados são incompatíveis."
+			handlers.ReturnJsonResponse(w, http.StatusMethodNotAllowed, handlers.MessageToJson(false, msg))
+		}
+	case match(p, "^([a-z]+)/\\d+$", &entity, &id):
+		t := handlers.GetEntity(entity)
+
+		if t == nil {
+			msg := fmt.Sprintf("Entidade %s requisitada não definida", entity)
+			handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, msg))
+		} else if r.Method == http.MethodGet {
+			err = t.Get(w, id)
+		} else if r.Method == http.MethodDelete {
+			err = t.Delete(w, id)
+		} else if r.Method == http.MethodPut {
+			err = t.Update(w, r, id)
+		} else {
+			msg := "Método e requisição solicitados são incompatíveis."
+			handlers.ReturnJsonResponse(w, http.StatusMethodNotAllowed, handlers.MessageToJson(false, msg))
+		}
 
 	default:
 		fmt.Println("não matchiou")
@@ -70,22 +87,20 @@ func match(path, pattern string, vars ...interface{}) bool {
 		return false
 	}
 
-	if len(vars) >= 1 {
-		for i, match := range matches[1:] {
-			switch p := vars[i].(type) {
-			case *string:
-				*p = match
-			case *int:
-				n, err := strconv.Atoi(match)
-				if err != nil {
-					fmt.Println("type inv")
-					return false
-				}
-				*p = n
-			default:
-				println("type ummatch")
+	for i, match := range matches[1:] {
+		switch p := vars[i].(type) {
+		case *string:
+			*p = match
+		case *int:
+			n, err := strconv.Atoi(match)
+			if err != nil {
+				fmt.Println("type inv")
 				return false
 			}
+			*p = n
+		default:
+			println("type ummatch")
+			return false
 		}
 	}
 
