@@ -44,44 +44,83 @@ Create Table gravadora (
     cod_grav   SMALLINT PRIMARY KEY,
     cod_fone   SMALLINT,
     nome       VARCHAR(20),
-    endereco   VARCHAR(20),
+    sede       VARCHAR(20),
     end_homep  VARCHAR(20),
     CONSTRAINT fk_cod_fone FOREIGN KEY (cod_fone)
         REFERENCES telefone_gravadora(cod_fone)
         ON DELETE SET NULL
 ) TABLESPACE spot_tertiary;
 
-CREATE TABLE meio_download (
+CREATE TABLE download (
     cod_down    SMALLINT PRIMARY KEY
 ) TABLESPACE spot_tertiary;
 
-Create Table Album (
+CREATE TABLE cd (
+    cod_cd     SMALLINT PRIMARY KEY
+) TABLESPACE spot_tertiary;
+
+CREATE TABLE vinil (
+    cod_vinil  SMALLINT PRIMARY KEY
+) TABLESPACE spot_tertiary;
+
+Create Table album (
     descricao   VARCHAR (20),
     cod_alb     SMALLINT PRIMARY KEY,
+    cod_grav    SMALLINT,
     cod_down    SMALLINT,
-    data_grav   DATE,
-    pr_compra   DECIMAL (10,2),
+    data_grav   DATE NOT NULL CHECK (data_grav > '2000-01-01'),
+    pr_compra   DECIMAL (10,2) NOT NULL,
     pr_venda    DECIMAL (10,2),
+    CONSTRAINT fk_cod_grav FOREIGN KEY (cod_grav)
+        REFERENCES gravadora(cod_grav)
+        ON DELETE SET NULL
     CONSTRAINT fk_cod_down FOREIGN KEY (cod_down)
         REFERENCES meio_download(cod_down)
         ON DELETE SET NULL
 ) TABLESPACE spot_tertiary;
 
-CREATE TABLE meio_cd (
-    cod_cd     SMALLINT PRIMARY KEY
+CREATE TABLE album_cd (
+    cod_cd     SMALLINT REFERENCES cd(cod_cd),
+    cod_alb    SMALLINT REFERENCES album(cod_alb)
 ) TABLESPACE spot_tertiary;
 
-CREATE TABLE meio_vinil (
-    cod_vinil  SMALLINT PRIMARY KEY
+CREATE TABLE album_vinil (
+    cod_vinil  SMALLINT REFERENCES vinil(cod_vinil),
+    cod_alb    SMALLINT REFERENCES album(cod_alb)
 ) TABLESPACE spot_tertiary;
 
-Create table composicao (
+CREATE FUNCTION check_meio_fisico (_cod_down SMALLINT, _cod_alb SMALLINT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    IF _cod_down IS NULL THEN
+    -- Quando o meio físico for CD ou vinil, o álbum pode ser composto por um ou mais CDs ou vinis.
+        RETURN EXISTS (
+            SELECT 1 FROM album_cd c, album_vinil v
+            WHERE c.cod_alb=_cod_alb AND v.cod_alb=_cod_alb
+                AND cod_cd IS NOT NULL OR cod_vinil IS NOT NULL
+        );
+    ELSE
+    -- Assegura que o meio físico é apenas download
+        RETURN EXISTS (
+            SELECT 1 FROM album_cd, album_vinil
+            WHERE c.cod_alb=_cod_alb AND v.cod_alb=_cod_alb
+                AND cod_cd IS NULL AND cod_vinil IS NULL
+        );
+    END IF;
+END
+$$ LANGUAGE PLPGSQL;
+
+ALTER TABLE album ADD CONSTRAINT meio_fisico_download_ou_cd_vinil CHECK (check_meio_fisico(cod_down, cod_alb))
+
+CREATE TABLE composicao (
     cod_composicao   SMALLINT PRIMARY KEY,
     descricao        TEXT,
     tipo             VARCHAR(20)
 ) TABLESPACE spot_tertiary;
 
-Create table faixa (
+CREATE TYPE gravacao AS ENUM ( 'ADD', 'DDD' )
+
+CREATE TABLE faixa (
     cod_faixa   SMALLINT PRIMARY KEY,
     cod_cd      SMALLINT,
     cod_vinil   SMALLINT,
@@ -90,18 +129,23 @@ Create table faixa (
     numero      INT,
     descricao   TEXT,
     tempo_exec  TIME,
-    tipo_grav   VARCHAR(8),
+    tipo_grav   gravacao CHECK ((cod_cd IS NOT NULL AND tipo_grav IS NOT NULL) OR (tipo_grav IS NULL)),
     CONSTRAINT fk_cod_cd FOREIGN KEY (cod_cd)
-        REFERENCES meio_cd(cod_cd)
+        REFERENCES album_cd(cod_cd)
         ON DELETE SET NULL,
     CONSTRAINT fk_cod_vinil FOREIGN KEY (cod_vinil)
-        REFERENCES meio_vinil(cod_vinil)
+        REFERENCES album_vinil(cod_vinil)
         ON DELETE SET NULL,
     CONSTRAINT fk_cod_down FOREIGN KEY (cod_down)
         REFERENCES meio_download(cod_down)
         ON DELETE SET NULL,
     CONSTRAINT fk_cod_composicao FOREIGN KEY (cod_composicao)
-        REFERENCES composicao(cod_composicao)
+        REFERENCES composicao(cod_composicao),
+    CHECK (
+        (cod_cd IS NOT NULL AND cod_vinil IS NULL AND cod_down IS NULL) OR
+        (cod_cd IS NULL AND cod_cd IS NOT NULL AND cod_down IS NULL)    OR
+        (cod_cd IS NULL AND cod_vinil IS NULL AND cod_down IS NOT NULL)
+    )
 ) TABLESPACE spot_secondary;
 
 CREATE TABLE periodo_musical (
