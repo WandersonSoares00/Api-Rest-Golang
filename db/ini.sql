@@ -36,7 +36,7 @@ CREATE TABLE gravadora (
     nome       VARCHAR(20) NOT NULL,
     cidade     VARCHAR(20) NOT NULL,
     pais       VARCHAR(20) NOT NULL,
-    end_homep  TEXT
+    end_homep  TEXT DEFAULT ''
 ) TABLESPACE spot_tertiary;
 
 CREATE TABLE telefone_gravadora (
@@ -56,7 +56,7 @@ Create Table album (
     cod_meio    INT,
     cod_grav    INT,
     nome        VARCHAR(20) NOT NULL,
-    descricao   TEXT,
+    descricao   TEXT DEFAULT '',
     data_grav   DATE NOT NULL CHECK (data_grav > '2000-01-01'),
     pr_compra   DECIMAL (10,2) NOT NULL,
     pr_venda    DECIMAL (10,2),
@@ -75,7 +75,7 @@ CREATE TYPE forma_musical AS ENUM (
 
 CREATE TABLE composicao (
     cod_composicao   SERIAL PRIMARY KEY,
-    descricao        TEXT,
+    descricao        TEXT DEFAULT '',
     tipo             forma_musical NOT NULL
 ) TABLESPACE spot_tertiary;
 
@@ -116,7 +116,7 @@ CREATE TABLE compositor (
 CREATE TABLE playlist (
     cod_play    SERIAL PRIMARY KEY,
     nome        VARCHAR(20) NOT NULL,
-    tempo_tot   TIME NOT NULL,
+    tempo_tot   TIME DEFAULT '00:00:00',
     data_criac  DATE DEFAULT CURRENT_DATE
 ) TABLESPACE spot_secondary;
 
@@ -130,7 +130,7 @@ CREATE TABLE faixa (
     cod_composicao  INT NOT NULL,
 
     numero      INT UNIQUE NOT NULL,
-    descricao   TEXT,
+    descricao   TEXT DEFAULT '',
     tempo_exec  TIME NOT NULL,
     tipo_grav   gravacao,
     
