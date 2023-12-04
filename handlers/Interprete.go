@@ -11,7 +11,53 @@ import (
 
 type Interprete schema.Interprete
 
-func (i Interprete) GetAll(w http.ResponseWriter) error {
+func (i Interprete) Get(w http.ResponseWriter, filter ...string) error {
+
+	len := len(filter)
+
+	if len == 0 {
+		return i.GetAll(w, `SELECT cod_inter, nome, tipo FROM interprete`)
+	}
+	if len == 2 {
+		return i.GetAll(w, fmt.Sprintf(`SELECT cod_inter, nome, tipo FROM interprete WHERE %s = %s`, filter[0], filter[1]))
+	}
+
+	sql := fmt.Sprintf(`SELECT cod_inter, nome, tipo FROM interprete WHERE cod_inter = %s`, filter[0])
+
+	conn, err := db.OpenConnection()
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	row := conn.QueryRow(sql)
+
+	//var i schema.Interprete
+	err = row.Scan(&i.Cod, &i.Nome, &i.Tipo)
+
+	if err != nil {
+		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
+		return nil
+	}
+
+	if err = row.Err(); err != nil {
+		return err
+	}
+
+	if interpreteJSON, err := json.Marshal(&i); err != nil {
+		HandlerMessage := MessageToJson(false, "Error parsing the interprete data")
+		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
+		return err
+	} else {
+		ReturnJsonResponse(w, http.StatusOK, interpreteJSON)
+	}
+
+	return nil
+}
+
+func (i Interprete) GetAll(w http.ResponseWriter, sql string) error {
 	conn, err := db.OpenConnection()
 
 	if err != nil {
@@ -53,40 +99,6 @@ func (i Interprete) GetAll(w http.ResponseWriter) error {
 	return nil
 }
 
-func (i Interprete) Get(w http.ResponseWriter, id int64) error {
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	row := conn.QueryRow(`SELECT cod_inter, nome, tipo FROM interprete WHERE cod_inter=$1`, id)
-
-	//var i schema.Interprete
-	err = row.Scan(&i.Cod, &i.Nome, &i.Tipo)
-
-	if err != nil {
-		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
-		return nil
-	}
-
-	if err = row.Err(); err != nil {
-		return err
-	}
-
-	if interpreteJSON, err := json.Marshal(&i); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the interprete data")
-		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
-		return err
-	} else {
-		ReturnJsonResponse(w, http.StatusOK, interpreteJSON)
-	}
-
-	return nil
-}
-
 func (i Interprete) Create(w http.ResponseWriter, r *http.Request) error {
 	//var i schema.Interprete
 
@@ -103,22 +115,22 @@ func (i Interprete) Create(w http.ResponseWriter, r *http.Request) error {
 
 	defer conn.Close()
 
-	sql := `INSERT INTO interprete (cod_inter, nome, tipo)
-			VALUES ($1, $2, $3, $4, $5) RETURNING cod_inter`
+	sql := `INSERT INTO interprete (nome, tipo)
+			VALUES ($1, $2) RETURNING cod_inter`
 
-	ret := conn.QueryRow(sql, i.Cod, i.Nome, i.Tipo)
+	ret := conn.QueryRow(sql, i.Nome, i.Tipo)
 
 	if ret.Err() != nil {
-		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
+		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
 		return ret.Err()
 	}
 
-	ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(true, fmt.Sprintf("%d inserido com sucesso!", i.Cod)))
+	ReturnJsonResponse(w, http.StatusCreated, MessageToJson(true, fmt.Sprintf("%d inserido com sucesso!", i.Cod)))
 
 	return nil
 }
 
-func (i Interprete) Update(w http.ResponseWriter, r *http.Request, id int64) error {
+func (i Interprete) Update(w http.ResponseWriter, r *http.Request, id int) error {
 	//var i schema.Interprete
 
 	if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
@@ -156,7 +168,12 @@ func (i Interprete) Update(w http.ResponseWriter, r *http.Request, id int64) err
 	return err
 }
 
-func (i Interprete) Delete(w http.ResponseWriter, id int64) error {
+func (i Interprete) Delete(w http.ResponseWriter, r *http.Request) error {
+
+	if err := json.NewDecoder(r.Body).Decode(&i); err != nil {
+		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "invalid input data"))
+		return err
+	}
 
 	conn, err := db.OpenConnection()
 
@@ -166,7 +183,7 @@ func (i Interprete) Delete(w http.ResponseWriter, id int64) error {
 
 	defer conn.Close()
 
-	ret, err := conn.Exec(`DELETE FROM interprete WHERE cod_inter=$1`, id)
+	ret, err := conn.Exec(`DELETE FROM interprete WHERE cod_inter=$1`, i.Cod)
 
 	if err != nil {
 		return err
@@ -178,10 +195,10 @@ func (i Interprete) Delete(w http.ResponseWriter, id int64) error {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
 		return err
 	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the interprete table", qtd, id)
+		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the interprete table", qtd, i.Cod)
 	}
 
-	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", id)))
+	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", i.Cod)))
 
 	return err
 }

@@ -9,20 +9,20 @@ import (
 	"github.com/WandersonSoares00/Api-Rest-Golang.git/schema"
 )
 
-type Faixa schema.Faixa
+type Faixa_playlist schema.Faixa_playlist
 
-func (f Faixa) Get(w http.ResponseWriter, filter ...string) error {
+func (f Faixa_playlist) Get(w http.ResponseWriter, filter ...string) error {
 
 	len := len(filter)
 
 	if len == 0 {
-		return f.GetAll(w, `SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa`)
+		return f.GetAll(w, `SELECT cod_faixa, cod_alb, cod_meio, cod_play, dt_ult_repr, qtd_repr FROM faixa_playlist`)
 	}
 	if len == 2 {
-		return f.GetAll(w, fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa WHERE %s = %s`, filter[0], filter[1]))
+		return f.GetAll(w, fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_play, dt_ult_repr, qtd_repr FROM faixa_playlist WHERE %s = %s`, filter[0], filter[1]))
 	}
 
-	sql := fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa WHERE cod_faixa = %s`, filter[0])
+	sql := fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_play, dt_ult_repr, qtd_repr FROM faixa_playlist WHERE cod_faixa = %s`, filter[0])
 
 	conn, err := db.OpenConnection()
 
@@ -34,8 +34,7 @@ func (f Faixa) Get(w http.ResponseWriter, filter ...string) error {
 
 	row := conn.QueryRow(sql)
 
-	//var f schema.Faixa
-	err = row.Scan(&f.Cod, &f.CodAlb, &f.CodMeio, &f.CodComp, &f.Num, &f.Desc, &f.TExec, &f.TpGrav)
+	err = row.Scan(&f.Codfaixa, &f.CodAlb, &f.CodMeio, &f.CodPlay, &f.UltRep, &f.QtdRep)
 
 	if err != nil {
 		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
@@ -47,7 +46,7 @@ func (f Faixa) Get(w http.ResponseWriter, filter ...string) error {
 	}
 
 	if faixaJSON, err := json.Marshal(&f); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the faixa data")
+		HandlerMessage := MessageToJson(false, "Error parsing the faixa_playlist data")
 		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
 		return err
 	} else {
@@ -57,7 +56,7 @@ func (f Faixa) Get(w http.ResponseWriter, filter ...string) error {
 	return nil
 }
 
-func (f Faixa) GetAll(w http.ResponseWriter, sql string) error {
+func (f Faixa_playlist) GetAll(w http.ResponseWriter, sql string) error {
 	conn, err := db.OpenConnection()
 
 	if err != nil {
@@ -66,31 +65,30 @@ func (f Faixa) GetAll(w http.ResponseWriter, sql string) error {
 
 	defer conn.Close()
 
-	//sql := `SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa`
 	rows, err := conn.Query(sql)
 
 	if err != nil {
 		return err
 	}
 
-	var faixas []Faixa
+	var faixas_play []Faixa_playlist
 
 	for rows.Next() {
 
-		err = rows.Scan(&f.Cod, &f.CodAlb, &f.CodMeio, &f.CodComp, &f.Num, &f.Desc, &f.TExec, &f.TpGrav)
+		err = rows.Scan(&f.Codfaixa, &f.CodAlb, &f.CodMeio, &f.CodPlay, &f.UltRep, &f.QtdRep)
 
 		if err != nil {
 			return err
 		}
-		faixas = append(faixas, f)
+		faixas_play = append(faixas_play, f)
 	}
 
 	if err = rows.Err(); err != nil {
 		return err
 	}
 
-	if faixasJSON, err := json.Marshal(&faixas); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the faixa data")
+	if faixasJSON, err := json.Marshal(&faixas_play); err != nil {
+		HandlerMessage := MessageToJson(false, "Error parsing the faixa_playlist data")
 		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
 		return err
 	} else {
@@ -100,10 +98,7 @@ func (f Faixa) GetAll(w http.ResponseWriter, sql string) error {
 	return nil
 }
 
-//func (f Faixa) Get_aux(w http.ResponseWriter, sql string) error {
-
-func (f Faixa) Create(w http.ResponseWriter, r *http.Request) error {
-	//var f schema.Faixa
+func (f Faixa_playlist) Create(w http.ResponseWriter, r *http.Request) error {
 
 	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
 		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "invalid input data"))
@@ -118,21 +113,22 @@ func (f Faixa) Create(w http.ResponseWriter, r *http.Request) error {
 
 	defer conn.Close()
 
-	sql := `INSERT INTO faixa (cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING cod_faixa`
+	sql := `INSERT INTO faixa_playlist (cod_faixa, cod_alb, cod_meio, cod_play, dt_ult_repr, qtd_repr)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING cod_faixa`
 
-	ret := conn.QueryRow(sql, f.CodAlb, f.CodMeio, f.CodComp, f.Num, f.Desc, f.TExec, f.TpGrav)
+	ret := conn.QueryRow(sql, f.Codfaixa, f.CodAlb, f.CodMeio, f.CodPlay, f.UltRep, f.QtdRep)
 
 	if ret.Err() != nil {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
 		return ret.Err()
 	}
 
+	ReturnJsonResponse(w, http.StatusCreated, MessageToJson(true, fmt.Sprintf("%d inserido com sucesso!", f.CodPlay)))
+
 	return nil
 }
 
-func (f Faixa) Update(w http.ResponseWriter, r *http.Request, id int) error {
-	//var f schema.Faixa
+func (f Faixa_playlist) Update(w http.ResponseWriter, r *http.Request, id int) error {
 
 	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
@@ -147,9 +143,9 @@ func (f Faixa) Update(w http.ResponseWriter, r *http.Request, id int) error {
 
 	defer conn.Close()
 
-	sql := `UPDATE faixa SET numero=$2, descricao=$3, tempo_exec=$4, tipo_grav=$5 WHERE cod_faixa=$1`
+	sql := `UPDATE faixa_playlist SET dt_ult-repr=$2, qtd_repr=$3 WHERE cod_faixa=$1`
 
-	ret, err := conn.Exec(sql, id, f.Desc, f.TExec, f.TpGrav)
+	ret, err := conn.Exec(sql, id, f.UltRep, f.QtdRep)
 
 	if err != nil {
 		return err
@@ -161,7 +157,7 @@ func (f Faixa) Update(w http.ResponseWriter, r *http.Request, id int) error {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
 		return err
 	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during insert operation for ID %d in the faixa table", qtd, id)
+		err = fmt.Errorf("unexpected number of rows affected (%d) during insert operation for ID %d in the faixa_playlist table", qtd, id)
 	}
 
 	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d atualizado com sucesso!", id)))
@@ -169,10 +165,10 @@ func (f Faixa) Update(w http.ResponseWriter, r *http.Request, id int) error {
 	return err
 }
 
-func (f Faixa) Delete(w http.ResponseWriter, r *http.Request) error {
+func (f Faixa_playlist) Delete(w http.ResponseWriter, r *http.Request) error {
 
 	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
+		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "invalid input data"))
 		return err
 	}
 
@@ -184,7 +180,7 @@ func (f Faixa) Delete(w http.ResponseWriter, r *http.Request) error {
 
 	defer conn.Close()
 
-	ret, err := conn.Exec(`DELETE FROM faixa WHERE cod_alb=$1 AND cod_faixa = $2 AND cod_meio = $3`, f.CodAlb, f.Cod, f.CodMeio)
+	ret, err := conn.Exec(`DELETE FROM faixa_playlist WHERE cod_faixa=$1 AND cod_alb=$2 AND cod_meio=$3 AND cod_play=$4`, f.Codfaixa, f.CodAlb, f.CodMeio, f.CodPlay)
 
 	if err != nil {
 		return err
@@ -196,10 +192,10 @@ func (f Faixa) Delete(w http.ResponseWriter, r *http.Request) error {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
 		return err
 	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the faixa table", qtd, f.Cod)
+		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation in the faixa_playlist table", qtd)
 	}
 
-	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", f.Cod)))
+	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "removido com sucesso!"))
 
 	return err
 }

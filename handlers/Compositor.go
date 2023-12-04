@@ -11,7 +11,18 @@ import (
 
 type Compositor schema.Compositor
 
-func (c Compositor) GetAll(w http.ResponseWriter) error {
+func (c Compositor) Get(w http.ResponseWriter, filter ...string) error {
+
+	len := len(filter)
+	if len == 0 {
+		return c.GetAll(w, `SELECT cod_compositor, cod_pm, nome, dt_nasc, dt_morte FROM compositor`)
+	}
+	if len == 2 {
+		return c.GetAll(w, fmt.Sprintf(`SELECT cod_compositor, cod_pm, nome, dt_nasc, dt_morte FROM compositor WHERE %s = %s`, filter[0], filter[1]))
+	}
+
+	sql := fmt.Sprintf(`SELECT cod_compositor, cod_pm, nome, dt_nasc, dt_morte FROM compositor WHERE cod_compositor = %s`, filter[0])
+
 	conn, err := db.OpenConnection()
 
 	if err != nil {
@@ -20,7 +31,41 @@ func (c Compositor) GetAll(w http.ResponseWriter) error {
 
 	defer conn.Close()
 
-	rows, err := conn.Query(`SELECT cod_compositor, cod_pm, nome, dt_nasc, dt_morte FROM compositor`)
+	row := conn.QueryRow(sql)
+
+	//var c schema.Compositor
+	err = row.Scan(&c.Cod, &c.CodPm, &c.Nome, &c.DtNasc, &c.DtMort)
+
+	if err != nil {
+		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
+		return nil
+	}
+
+	if err = row.Err(); err != nil {
+		return err
+	}
+
+	if compositorJSON, err := json.Marshal(&c); err != nil {
+		HandlerMessage := MessageToJson(false, "Error parsing the compositor data")
+		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
+		return err
+	} else {
+		ReturnJsonResponse(w, http.StatusOK, compositorJSON)
+	}
+
+	return nil
+}
+
+func (c Compositor) GetAll(w http.ResponseWriter, sql string) error {
+	conn, err := db.OpenConnection()
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	rows, err := conn.Query(sql)
 
 	if err != nil {
 		return err
@@ -53,40 +98,6 @@ func (c Compositor) GetAll(w http.ResponseWriter) error {
 	return nil
 }
 
-func (c Compositor) Get(w http.ResponseWriter, id int64) error {
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	row := conn.QueryRow(`SELECT cod_compositor, cod_pm, nome, dt_nasc, dt_morte FROM compositor WHERE cod_compositor=$1`, id)
-
-	//var c schema.Compositor
-	err = row.Scan(&c.Cod, &c.CodPm, &c.Nome, &c.DtNasc, &c.DtMort)
-
-	if err != nil {
-		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
-		return nil
-	}
-
-	if err = row.Err(); err != nil {
-		return err
-	}
-
-	if compositorJSON, err := json.Marshal(&c); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the compositor data")
-		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
-		return err
-	} else {
-		ReturnJsonResponse(w, http.StatusOK, compositorJSON)
-	}
-
-	return nil
-}
-
 func (c Compositor) Create(w http.ResponseWriter, r *http.Request) error {
 	//var c schema.Compositor
 
@@ -103,22 +114,22 @@ func (c Compositor) Create(w http.ResponseWriter, r *http.Request) error {
 
 	defer conn.Close()
 
-	sql := `INSERT INTO compositor (cod_compositor, cod_pm, nome, dt_nasc, dt_morte)
-			VALUES ($1, $2, $3, $4, $5) RETURNING cod_compositor`
+	sql := `INSERT INTO compositor (cod_pm, nome, dt_nasc, dt_morte)
+			VALUES ($1, $2, $3, $4) RETURNING cod_compositor`
 
-	ret := conn.QueryRow(sql, c.Cod, c.CodPm, c.Nome, c.DtNasc, c.DtMort)
+	ret := conn.QueryRow(sql, c.CodPm, c.Nome, c.DtNasc, c.DtMort)
 
 	if ret.Err() != nil {
-		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
+		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
 		return ret.Err()
 	}
 
-	ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(true, fmt.Sprintf("%d inserido com sucesso!", c.Cod)))
+	ReturnJsonResponse(w, http.StatusCreated, MessageToJson(true, fmt.Sprintf("%d inserido com sucesso!", c.Cod)))
 
 	return nil
 }
 
-func (c Compositor) Update(w http.ResponseWriter, r *http.Request, id int64) error {
+func (c Compositor) Update(w http.ResponseWriter, r *http.Request, id int) error {
 	//var c schema.Compositor
 
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
@@ -156,7 +167,12 @@ func (c Compositor) Update(w http.ResponseWriter, r *http.Request, id int64) err
 	return err
 }
 
-func (c Compositor) Delete(w http.ResponseWriter, id int64) error {
+func (c Compositor) Delete(w http.ResponseWriter, r *http.Request) error {
+
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
+		return err
+	}
 
 	conn, err := db.OpenConnection()
 
@@ -166,7 +182,7 @@ func (c Compositor) Delete(w http.ResponseWriter, id int64) error {
 
 	defer conn.Close()
 
-	ret, err := conn.Exec(`DELETE FROM compositor WHERE cod_compositor=$1`, id)
+	ret, err := conn.Exec(`DELETE FROM compositor WHERE cod_compositor=$1`, c.Cod)
 
 	if err != nil {
 		return err
@@ -178,10 +194,10 @@ func (c Compositor) Delete(w http.ResponseWriter, id int64) error {
 		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
 		return err
 	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the compositor table", qtd, id)
+		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the compositor table", qtd, c.Cod)
 	}
 
-	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", id)))
+	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", c.Cod)))
 
 	return err
 }

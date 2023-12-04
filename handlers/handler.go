@@ -6,17 +6,30 @@ import (
 )
 
 type Entity interface {
-	GetAll(w http.ResponseWriter) error
-	Get(w http.ResponseWriter, id int64) error
+	Get(w http.ResponseWriter, filter ...string) error
 	Create(w http.ResponseWriter, r *http.Request) error
-	Update(w http.ResponseWriter, r *http.Request, id int64) error
-	Delete(w http.ResponseWriter, id int64) error
+	Update(w http.ResponseWriter, r *http.Request, id int) error
+	Delete(w http.ResponseWriter, r *http.Request) error
 }
 
 func GetEntity(str string) Entity {
 	switch str {
-	case "gravadoras":	return Gravadora{}
-	default:			return nil
+	case "gravadoras":
+		return Gravadora{}
+	case "albuns":
+		return Album{}
+	case "compositores":
+		return Compositor{}
+	case "faixas":
+		return Faixa{}
+	case "interpretes":
+		return Interprete{}
+	case "playlists":
+		return Playlist{}
+	case "faixasplaylists":
+		return Faixa_playlist{}
+	default:
+		return nil
 	}
 }
 
