@@ -1,64 +1,67 @@
 package schema
 
-import "time"
-
-type Telefone_gravadora struct {
-	Cod    int    `json:"cod"`
-	Numero string `json:"numero"`
-}
+import (
+	"database/sql"
+	"time"
+)
 
 type Gravadora struct {
-	Cod     int    `json:"cod"`
-	CodFone int    `json:"codFone"`
-	Nome    string `json:"nome"`
-	Ender   string `json:"endereco"`
-	HomeP   string `json:"home page"`
+	Cod    int    `json:"id"`
+	Nome   string `json:"nome"`
+	Cidade string `json:"cidade"`
+	Pais   string `json:"pais"`
+	HomeP  string `json:"home page"`
 }
 
 type Album struct {
-	Cod     int64     `json:"cod"`
-	CodDown int64     `json:"codDown"`
-	Desc    string    `json:"descricao"`
-	DtGrav  time.Time `json:"dtGrav"`
-	PrComp  float32   `json:"prCompra"`
-	PrVen   float32   `json:"prVenda"`
+	Cod     int             `json:"id"`
+	CodMeio int             `json:"codMeio"`
+	CodGrav int             `json:"codGrav"`
+	Nome    string          `json:"nome"`
+	Desc    string          `json:"descricao"`
+	DtGrav  time.Time       `json:"dtGrav"`
+	PrComp  float32         `json:"prCompra"`
+	PrVen   sql.NullFloat64 `json:"prVenda"`
+	Meio    string          `json:"meio"`
 }
 
-type Composicao struct {
-	Cod  int    `json:"cod"`
-	Desc string `json:"descricao"`
+type Interprete struct {
+	Cod  int    `json:"id"`
+	Nome string `json:"nome"`
 	Tipo string `json:"tipo"`
 }
 
-type Faixa struct {
-	Cod     int           `json:"cod"`
-	CodCd   int64         `json:"codCd"`
-	CodVin  int64         `json:"codVinil"`
-	CodDown int64         `json:"codDown"`
-	CodComp int64         `json:"codComp"`
-	Num     int           `json:"numero"`
-	Desc    string        `json:"descricao"`
-	TExec   time.Duration `json:"tempexec"`
-	TpGrav  string        `json:"tipogravacao"`
-}
-
 type Compositor struct {
-	Cod    int       `json:"cod"`
-	CodPm  int64     `json:"codPm"`
+	Cod    int       `json:"id"`
+	CodPm  int       `json:"codPeriodoMusical"`
 	Nome   string    `json:"nome"`
 	DtNasc time.Time `json:"dtnascimento"`
 	DtMort time.Time `json:"dtmorte,omitempty"`
 }
 
 type Playlist struct {
-	Cod     int           `json:"cod"`
-	Nome    string        `json:"nome"`
-	TempTot time.Duration `json:"tempotot"`
-	DtCriac time.Duration `json:"dtcriacao"`
+	Cod     int       `json:"id"`
+	Nome    string    `json:"nome"`
+	TempTot time.Time `json:"tempoTot"`
+	DtCriac time.Time `json:"dtCriacao"`
 }
 
-type Interprete struct {
-	Cod  int    `json:"cod"`
-	Nome string `json:"nome"`
-	Tipo string `json:"tipo"`
+type Faixa struct {
+	Cod     int       `json:"id"`
+	CodAlb  int       `json:"codAlbum"`
+	CodMeio int       `json:"codMeio"`
+	CodComp int       `json:"codComposicao"`
+	Num     int       `json:"numero"`
+	Desc    string    `json:"descricao"`
+	TExec   time.Time `json:"tempExec"`
+	TpGrav  string    `json:"tipogravacao"`
+}
+
+type Faixa_playlist struct {
+	Codfaixa int          `json:"codFaixa"`
+	CodAlb   int          `json:"codAlbum"`
+	CodMeio  int          `json:"codMeio"`
+	CodPlay  int          `json:"codPlay"`
+	UltRep   sql.NullTime `json:"UtimaRep"`
+	QtdRep   int          `json:"qtdRep"`
 }
