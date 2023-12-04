@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	_ "github.com/lib/pq"
+
 	"github.com/WandersonSoares00/Api-Rest-Golang.git/configs"
 )
 
