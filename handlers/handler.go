@@ -1,36 +1,19 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 )
 
 type Entity interface {
-	Get(w http.ResponseWriter, filter ...string) error
-	Create(w http.ResponseWriter, r *http.Request) error
-	Update(w http.ResponseWriter, r *http.Request, id int) error
-	Delete(w http.ResponseWriter, r *http.Request) error
-}
-
-func GetEntity(str string) Entity {
-	switch str {
-	case "gravadoras":
-		return Gravadora{}
-	case "albuns":
-		return Album{}
-	case "compositores":
-		return Compositor{}
-	case "faixas":
-		return Faixa{}
-	case "interpretes":
-		return Interprete{}
-	case "playlists":
-		return Playlist{}
-	case "faixasplaylists":
-		return Faixa_playlist{}
-	default:
-		return nil
-	}
+	Scan(row *sql.Rows) error
+	New() Entity
+	SqlCreate() string
+	SqlUpdate() string
+	SqlDelete() string
+	SqlQuery(filter string) string
+	SqlQueryJoin(filter string) string
 }
 
 func init() {

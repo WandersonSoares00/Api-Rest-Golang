@@ -1,205 +1,40 @@
 package handlers
 
 import (
-	"encoding/json"
+	"database/sql"
 	"fmt"
-	"net/http"
 
-	"github.com/WandersonSoares00/Api-Rest-Golang.git/db"
 	"github.com/WandersonSoares00/Api-Rest-Golang.git/schema"
 )
 
 type Faixa schema.Faixa
 
-func (f Faixa) Get(w http.ResponseWriter, filter ...string) error {
-
-	len := len(filter)
-
-	if len == 0 {
-		return f.GetAll(w, `SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa`)
-	}
-	if len == 2 {
-		return f.GetAll(w, fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa WHERE %s = %s`, filter[0], filter[1]))
-	}
-
-	sql := fmt.Sprintf(`SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa WHERE cod_faixa = %s`, filter[0])
-
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	row := conn.QueryRow(sql)
-
-	//var f schema.Faixa
-	err = row.Scan(&f.Cod, &f.CodAlb, &f.CodMeio, &f.CodComp, &f.Num, &f.Desc, &f.TExec, &f.TpGrav)
-
-	if err != nil {
-		ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, "No data"))
-		return nil
-	}
-
-	if err = row.Err(); err != nil {
-		return err
-	}
-
-	if faixaJSON, err := json.Marshal(&f); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the faixa data")
-		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
-		return err
-	} else {
-		ReturnJsonResponse(w, http.StatusOK, faixaJSON)
-	}
-
-	return nil
+func (f *Faixa) Scan(row *sql.Rows) error {
+	return row.Scan(&f.Cod, &f.CodAlb, &f.Meio, &f.CodComp, &f.Desc, &f.TExec, &f.TpGrav)
 }
 
-func (f Faixa) GetAll(w http.ResponseWriter, sql string) error {
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	//sql := `SELECT cod_faixa, cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav FROM faixa`
-	rows, err := conn.Query(sql)
-
-	if err != nil {
-		return err
-	}
-
-	var faixas []Faixa
-
-	for rows.Next() {
-
-		err = rows.Scan(&f.Cod, &f.CodAlb, &f.CodMeio, &f.CodComp, &f.Num, &f.Desc, &f.TExec, &f.TpGrav)
-
-		if err != nil {
-			return err
-		}
-		faixas = append(faixas, f)
-	}
-
-	if err = rows.Err(); err != nil {
-		return err
-	}
-
-	if faixasJSON, err := json.Marshal(&faixas); err != nil {
-		HandlerMessage := MessageToJson(false, "Error parsing the faixa data")
-		ReturnJsonResponse(w, http.StatusInternalServerError, HandlerMessage)
-		return err
-	} else {
-		ReturnJsonResponse(w, http.StatusOK, faixasJSON)
-	}
-
-	return nil
+func (f *Faixa) New() Entity {
+	return &Faixa{}
 }
 
-//func (f Faixa) Get_aux(w http.ResponseWriter, sql string) error {
-
-func (f Faixa) Create(w http.ResponseWriter, r *http.Request) error {
-	//var f schema.Faixa
-
-	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
-		ReturnJsonResponse(w, http.StatusBadRequest, MessageToJson(false, "invalid input data"))
-		return err
-	}
-
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	sql := `INSERT INTO faixa (cod_alb, cod_meio, cod_composicao, numero, descricao, tempo_exec, tipo_grav)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING cod_faixa`
-
-	ret := conn.QueryRow(sql, f.CodAlb, f.CodMeio, f.CodComp, f.Num, f.Desc, f.TExec, f.TpGrav)
-
-	if ret.Err() != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao tentar inserir dados apresentados"))
-		return ret.Err()
-	}
-
-	return nil
+func (f *Faixa) SqlCreate() string {
+	return fmt.Sprintf(`INSERT INTO faixa (cod_alb, meio, nro_faixa, cod_composicao, descricao, tempo_exec)
+		VALUES (%d, '%s', %d, %d, '%s', '%s') RETURNING cod_faixa`, f.CodAlb, f.Meio, f.Cod, f.CodComp, f.Desc, f.TExec.Format("15:04:05"))
 }
 
-func (f Faixa) Update(w http.ResponseWriter, r *http.Request, id int) error {
-	//var f schema.Faixa
-
-	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
-		return err
-	}
-
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	sql := `UPDATE faixa SET numero=$2, descricao=$3, tempo_exec=$4, tipo_grav=$5 WHERE cod_faixa=$1`
-
-	ret, err := conn.Exec(sql, id, f.Desc, f.TExec, f.TpGrav)
-
-	if err != nil {
-		return err
-	}
-
-	var qtd int64
-
-	if qtd, err = ret.RowsAffected(); err != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
-		return err
-	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during insert operation for ID %d in the faixa table", qtd, id)
-	}
-
-	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d atualizado com sucesso!", id)))
-
-	return err
+func (f *Faixa) SqlUpdate() string {
+	return fmt.Sprintf(`UPDATE faixa SET descricao='%s', tempo_exec='%s', tipo_grav='%s'
+				WHERE cod_alb=%d AND nro_faixa=%d AND meio='%s'`, f.Desc, f.TExec.Format("15:04:05"), f.TpGrav.String, f.CodAlb, f.Cod, f.Meio)
 }
 
-func (f Faixa) Delete(w http.ResponseWriter, r *http.Request) error {
+func (f *Faixa) SqlDelete() string {
+	return fmt.Sprintf(`DELETE FROM faixa WHERE cod_alb=%d AND nro_faixa = %d AND meio = '%s'`, f.CodAlb, f.Cod, f.Meio)
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "Error decoding json"))
-		return err
-	}
+func (f *Faixa) SqlQuery(filter string) string {
+	return fmt.Sprintf(`SELECT * FROM faixa WHERE %s`, filter)
+}
 
-	conn, err := db.OpenConnection()
-
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	ret, err := conn.Exec(`DELETE FROM faixa WHERE cod_alb=$1 AND cod_faixa = $2 AND cod_meio = $3`, f.CodAlb, f.Cod, f.CodMeio)
-
-	if err != nil {
-		return err
-	}
-
-	var qtd int64
-
-	if qtd, err = ret.RowsAffected(); err != nil {
-		ReturnJsonResponse(w, http.StatusInternalServerError, MessageToJson(false, "erro ao atualizar dados apresentados."))
-		return err
-	} else if qtd > 1 {
-		err = fmt.Errorf("unexpected number of rows affected (%d) during delete operation for ID %d in the faixa table", qtd, f.Cod)
-	}
-
-	ReturnJsonResponse(w, http.StatusOK, MessageToJson(true, fmt.Sprintf("%d removido com sucesso!", f.Cod)))
-
-	return err
+func (f *Faixa) SqlQueryJoin(filter string) string {
+	return fmt.Sprintf(`SELECT f.* FROM album JOIN faixa f USING(cod_alb, meio) WHERE %s`, filter)
 }
