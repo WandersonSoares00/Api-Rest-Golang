@@ -11,8 +11,8 @@ AS $$
 BEGIN
     RETURN query
     SELECT DISTINCT a.nome "album" FROM album a
-    JOIN faixa              USING (cod_alb, cod_meio)
-    JOIN faixa_compositor   USING (cod_faixa, cod_alb, cod_meio)
+    JOIN faixa              USING (cod_alb, meio)
+    JOIN faixa_compositor   USING (nro_faixa, cod_alb, meio)
     JOIN compositor c       USING (cod_compositor)
     WHERE c.nome LIKE _nome_comp;
 END
@@ -37,7 +37,7 @@ $$ LANGUAGE PLPGSQL;
 
 /*
 Listar nome da gravadora com maior número de playlists que possuem
-pelo uma faixa composta pelo compositor Dvorack
+pelo menos uma faixa composta pelo compositor Dvorack
 */
 CREATE OR REPLACE FUNCTION gravadora_com_mais_playlists (_nome_comp VARCHAR DEFAULT '_vorack')
 RETURNS TABLE(nome_gravadora VARCHAR)
@@ -49,14 +49,14 @@ BEGIN
             SELECT g.nome, COUNT(distinct cod_play) qtd
             FROM gravadora g
             JOIN album          USING(cod_grav)
-            JOIN faixa f        USING(cod_alb, cod_meio)
-            JOIN faixa_playlist USING(cod_faixa, cod_alb, cod_meio)
+            JOIN faixa f        USING(cod_alb, meio)
+            JOIN faixa_playlist USING(nro_faixa, cod_alb, meio)
             JOIN playlist       USING(cod_play)
             WHERE exists (
                 SELECT 1 FROM compositor c
-                JOIN faixa_compositor fc ON f.cod_faixa = fc.cod_faixa
+                JOIN faixa_compositor fc ON f.nro_faixa = fc.nro_faixa
                                          AND f.cod_alb  = fc.cod_alb
-                                         AND f.cod_meio = fc.cod_meio
+                                         AND f.meio = fc.meio
                                          AND c.cod_compositor = fc.cod_compositor
                 WHERE c.nome LIKE _nome_comp
             )                                                                                                                                                               
@@ -76,34 +76,28 @@ existentes.
 CREATE OR REPLACE FUNCTION compositor_mais_nro_faixas_playlists ()
 RETURNS TABLE(compositor VARCHAR)
 AS $$
+
+select c.nome, count(distinct (nro_faixa, f.cod_alb, f.meio))                                                                                                           
+from compositor c                                                                                                                                                       
+join faixa_compositor using(cod_compositor)                                                                                                                             
+join faixa f          using(nro_faixa, cod_alb)                                                                                                                         
+join faixa_playlist   using(nro_faixa, cod_alb)                                                                                                                         
+group by c.nome;
+
 BEGIN
     RETURN query
     SELECT nome FROM (
-        SELECT nome, MAX(qtd) FROM (
-            SELECT c.nome, COUNT(distinct cod_play) qtd
-            FROM compositor c
-            JOIN faixa_compositor   USING(cod_compositor)
-            JOIN faixa              USING(cod_faixa, cod_alb, cod_meio)
-            JOIN faixa_playlist     USING(cod_faixa, cod_alb, cod_meio)
-            GROUP BY c.cod_compositor, c.nome
-            ) AS comp_qtd_playlists
-        GROUP BY comp_qtd_playlists.nome
+        SELECT c.nome, COUNT(*) qtd
+        FROM compositor c
+        JOIN faixa_compositor   USING(cod_compositor)
+        JOIN faixa              USING(nro_faixa, cod_alb, meio)
+        JOIN faixa_playlist     USING(nro_faixa, cod_alb, meio)
+        GROUP BY c.cod_compositor, c.nome
+        ORDER BY qtd DESC
+        LIMIT 1
     ) AS compositor_mais_faixas;
 END
 $$ LANGUAGE PLPGSQL;
-
-/*
-SELECT nome FROM (
-    SELECT nome, MAX(qtd) FROM (
-        SELECT nome, COUNT(distinct cod_play) qtd                        
-        FROM compositor                                                  
-        JOIN faixa_compositor   USING (cod_compositor)                   
-        JOIN faixa_playlist     USING (cod_faixa, cod_alb, cod_meio)     
-        GROUP BY cod_compositor, nome                                    
-    ) AS comp_playlists                                                  
-    GROUP BY nome                                                        
-) AS compositor_mais_faixas;
-*/
 
 
 /*
@@ -118,9 +112,9 @@ BEGIN
     RETURN query
     SELECT p.nome FROM playlist p
     JOIN faixa_playlist     USING(cod_play)
-    JOIN faixa              USING(cod_faixa, cod_alb, cod_meio)
+    JOIN faixa              USING(nro_faixa, cod_alb, meio)
     JOIN composicao c       USING(cod_composicao)
-    JOIN faixa_compositor   USING(cod_faixa, cod_alb, cod_meio)
+    JOIN faixa_compositor   USING(nro_faixa, cod_alb, meio)
     JOIN compositor         USING(cod_compositor)
     JOIN periodo_musical pm USING(cod_pm)
     WHERE c.descricao = _tipo_comp AND pm.periodo = _periodo;

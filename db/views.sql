@@ -5,11 +5,10 @@ quantidade de álbuns que a compõem.
 */
 
 CREATE MATERIALIZED VIEW albuns_playlist AS
-SELECT p.nome "Playlist", COUNT(DISTINCT P.cod_play) "Qtd albuns" FROM album
-JOIN faixa          USING (cod_alb, cod_meio)
-JOIN faixa_playlist USING (cod_faixa, cod_alb, cod_meio)
-JOIN playlist p     USING (cod_play)
-GROUP BY p.cod_play, p.nome
+SELECT nome "Playlist", COUNT(DISTINCT cod_alb) "Qtd albuns" FROM playlist
+LEFT JOIN faixa_playlist USING (cod_play)
+GROUP BY cod_play, nome
+ORDER BY "Qtd albuns" DESC
 WITH NO DATA;
 
 
