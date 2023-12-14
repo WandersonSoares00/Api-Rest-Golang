@@ -19,49 +19,26 @@ func init() {
 
 func Serve(w http.ResponseWriter, r *http.Request) {
 
-	var entity string
-	var id int
 	var err error = nil
-	p := r.URL.Path
 
 	start := time.Now()
 
-	switch {
-	case match(p, "^([a-z]+)/?$", &entity):
-		t := handlers.GetEntity(entity)
+	entity, sql := parseUrl(r)
 
-		if t == nil {
-			msg := fmt.Sprintf("Entidade %s requisitada não definida", entity)
-			handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, msg))
-		} else if r.Method == http.MethodGet {
-			err = t.Get(w)
-		} else if r.Method == http.MethodDelete {
-			err = t.Delete(w, r)
-		} else if r.Method == http.MethodPost {
-			err = t.Create(w, r)
-		} else {
-			msg := "Método e requisição solicitados são incompatíveis."
-			handlers.ReturnJsonResponse(w, http.StatusMethodNotAllowed, handlers.MessageToJson(false, msg))
-		}
-	case match(p, "^([a-z]+)/([0-9]+)+$", &entity, &id):
-		t := handlers.GetEntity(entity)
-
-		if t == nil {
-			msg := fmt.Sprintf("Entidade %s requisitada não definida", entity)
-			handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, msg))
-		} else if r.Method == http.MethodGet {
-			err = t.Get(w, strconv.Itoa(id))
-		} else if r.Method == http.MethodPut {
-			err = t.Update(w, r, id)
-		} else {
-			msg := "Método e requisição solicitados são incompatíveis."
-			handlers.ReturnJsonResponse(w, http.StatusMethodNotAllowed, handlers.MessageToJson(false, msg))
-		}
-	case match(p, "^faixas/albuns/([0-9]+)+$", &id) && r.Method == http.MethodGet:
-		t := handlers.GetEntity("faixas")
-		err = t.Get(w, "cod_alb", strconv.Itoa(id))
-	default:
-		handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, "url inválida."))
+	if entity == nil {
+		msg := "Entidade requisitada não definida"
+		handlers.ReturnJsonResponse(w, http.StatusBadRequest, handlers.MessageToJson(false, msg))
+	} else if r.Method == http.MethodGet {
+		err = handlers.Get(&entity, w, sql)
+	} else if r.Method == http.MethodPost {
+		err = handlers.Create(&entity, w, r)
+	} else if r.Method == http.MethodPut {
+		err = handlers.Update(&entity, w, r)
+	} else if r.Method == http.MethodDelete {
+		err = handlers.Delete(&entity, w, r)
+	} else {
+		msg := "Método e requisição solicitados são incompatíveis."
+		handlers.ReturnJsonResponse(w, http.StatusMethodNotAllowed, handlers.MessageToJson(false, msg))
 	}
 
 	time := time.Since(start).Microseconds()
@@ -73,6 +50,69 @@ func Serve(w http.ResponseWriter, r *http.Request) {
 		logger.Infof("%s resolved with %dms\n", requestStr, time)
 	}
 
+}
+
+func parseUrl(r *http.Request) (entity handlers.Entity, sql string) {
+	url := r.URL.Path
+	entity = nil
+	var id string
+
+	//presume-se, nesse ponto, que toda request(exceto "^playlists/([0-9]+)+/faixas/?$") é Get...
+	switch {
+	case match(url, "^gravadoras/?$"):
+		entity = &handlers.Gravadora{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^gravadoras/([0-9]+)+/?$", &id):
+		entity = &handlers.Gravadora{}
+		sql = entity.SqlQuery(fmt.Sprintf("cod_grav = %s", id))
+	case match(url, "^albuns/?$"):
+		entity = &handlers.Album{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^albuns/([0-9]+)+/?$", &id):
+		entity = &handlers.Album{}
+		sql = entity.SqlQuery(fmt.Sprintf("cod_alb = %s", id))
+	case match(url, "^albuns/([0-9]+)+/faixas/?$", &id):
+		entity = &handlers.Faixa{}
+		sql = entity.SqlQueryJoin(fmt.Sprintf("cod_alb = %s", id))
+	case match(url, "^faixas/?$"):
+		entity = &handlers.Faixa{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^faixas/([0-9]+)+/?$", &id):
+		entity = &handlers.Faixa{}
+		sql = entity.SqlQuery(fmt.Sprintf("nro_faixa = %s", id))
+	case match(url, "^interpretes/?$"):
+		entity = &handlers.Interprete{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^interpretes/([0-9]+)+/?$", &id):
+		entity = &handlers.Interprete{}
+		sql = entity.SqlQuery(fmt.Sprintf("cod_inter = %s", id))
+	case match(url, "^faixas/([0-9]+)+/interpretes/?$", &id):
+		entity = &handlers.Interprete{}
+		sql = entity.SqlQueryJoin(fmt.Sprintf("nro_faixa = %s", id))
+	case match(url, "^compositores/?$"):
+		entity = &handlers.Compositor{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^compositores/([0-9]+)+/?$", &id):
+		entity = &handlers.Compositor{}
+		sql = entity.SqlQuery(fmt.Sprintf("cod_compositor = %s", id))
+	case match(url, "^faixas/([0-9]+)+/compositores/?$", &id):
+		entity = &handlers.Compositor{}
+		sql = entity.SqlQueryJoin(fmt.Sprintf("nro_faixa = %s", id))
+	case match(url, "^playlists/?$"):
+		entity = &handlers.Playlist{}
+		sql = entity.SqlQuery("true")
+	case match(url, "^playlists/([0-9]+)+/?$", &id):
+		entity = &handlers.Playlist{}
+		sql = entity.SqlQuery(fmt.Sprintf("cod_play = %s", id))
+	case r.Method == "GET" && match(url, "^playlists/([0-9]+)+/faixas/?$", &id):
+		entity = &handlers.Playlist{}
+		sql = entity.SqlQueryJoin(fmt.Sprintf("cod_play = %s", id))
+		entity = &handlers.Faixa{}
+	case match(url, "^playlists/([0-9]+)+/faixas/?$", &id):
+		entity = &handlers.Faixa_playlist{}
+	}
+
+	return
 }
 
 func match(path, pattern string, vars ...interface{}) bool {
