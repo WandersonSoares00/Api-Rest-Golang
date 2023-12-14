@@ -17,6 +17,7 @@ type config struct {
 	DbUser  string `json:"DBUser"`
 	DbPass  string `json:"DBPass"`
 	Dbname  string `json:"DBName"`
+	SSL     string `json:"SSLMode"`
 }
 
 func init() {
@@ -32,10 +33,6 @@ func init() {
 	defer cfgFile.Close()
 
 	cfg = new(config)
-
-	*cfg = config{
-		8080, "localhost", 5432, "postgres", "postgres", "SpotPer",
-	}
 
 	dec := json.NewDecoder(cfgFile)
 	err = dec.Decode(cfg)

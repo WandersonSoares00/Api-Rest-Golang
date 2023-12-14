@@ -4,5 +4,6 @@
     "DBPort": 5432,
     "DBUser": "postgres",
     "DBPass": "postgres",
-    "DBName": "bdspotper"
+    "DBName": "bdspotper",
+    "SSLMode": "disable"
 }
