@@ -15,7 +15,6 @@ type Gravadora struct {
 
 type Album struct {
 	Cod     int             `json:"id"`
-	CodMeio int             `json:"codMeio"`
 	CodGrav int             `json:"codGrav"`
 	Nome    string          `json:"nome"`
 	Desc    string          `json:"descricao"`
@@ -47,21 +46,20 @@ type Playlist struct {
 }
 
 type Faixa struct {
-	Cod     int       `json:"id"`
-	CodAlb  int       `json:"codAlbum"`
-	CodMeio int       `json:"codMeio"`
-	CodComp int       `json:"codComposicao"`
-	Num     int       `json:"numero"`
-	Desc    string    `json:"descricao"`
-	TExec   time.Time `json:"tempExec"`
-	TpGrav  string    `json:"tipogravacao"`
+	Cod     int            `json:"id"`
+	CodAlb  int            `json:"codAlbum"`
+	Meio    string         `json:"Meio"`
+	CodComp int            `json:"codComposicao"`
+	Desc    string         `json:"descricao"`
+	TExec   time.Time      `json:"tempExec"`
+	TpGrav  sql.NullString `json:"tipogravacao"`
 }
 
 type Faixa_playlist struct {
-	Codfaixa int          `json:"codFaixa"`
+	Codfaixa int          `json:"nroFaixa"`
 	CodAlb   int          `json:"codAlbum"`
-	CodMeio  int          `json:"codMeio"`
+	Meio     string       `json:"meio"`
 	CodPlay  int          `json:"codPlay"`
-	UltRep   sql.NullTime `json:"UtimaRep"`
 	QtdRep   int          `json:"qtdRep"`
+	DtUltRep sql.NullTime `json:"ultimaRepr"`
 }
