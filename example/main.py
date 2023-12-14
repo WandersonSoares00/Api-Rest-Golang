@@ -28,51 +28,68 @@ def insert_data(entity, data):
     return req.status_code == HTTPStatus.CREATED
 
 def remove_data(entity, data):
-    req = requests.delete(f"http://{host}:{port}/api/v1/{entity}/{id}", json=data)
+    req = requests.delete(f"http://{host}:{port}/api/v1/{entity}", json=data)
     return req.status_code == HTTPStatus.OK
 
-def insert_faixa_in_playlist (id_play):
+def insert_faixa_in_playlist (id_album, id_play):
     while True:
-        id_faixa = int(input("Informe o id da faixa a ser adicionada (-1 voltar): "))
+        id_faixa = int(input("Informe o número da faixa (-1 voltar): "))
         if id_faixa == -1:
             return True
-        faixa = get_entity_by_id("faixas", id_faixa)
+        meio     =     input("Informe o meio físico da faixa: ")
         
-        if 'success' not in faixa and not (insert_data("faixasplaylists", {"codFaixa": id_faixa, "codAlbum": faixa['codAlbum'], "codMeio": faixa['codMeio'], "codPlay": id_play})):
+        if not (insert_data(f"playlists/{id_play}/faixas", {"nroFaixa": id_faixa, "codAlbum": id_album, "meio": meio, "codPlay": id_play})):
             return False
 
-def remove_faixa_from_playlist(id_play):
+def remove_faixa_from_playlist(id_album, id_play):
     while True:
         id_faixa = int(input("Informe o id da faixa a ser removida (-1 voltar): "))
         if id_faixa == -1:
             return True
-        faixa = get_entity_by_id("faixas", id_faixa)
-        if 'success' not in faixa and not (remove_data("faixasplaylists", {"codFaixa": id_faixa, "codAlbum": faixa['codAlbum'], "codMeio": faixa['codMeio'], "codPlay": id_play})):
+        meio     =     input("Informe o meio físico da faixa: ")
+
+        if not (remove_data(f"playlists/{id_play}/faixas", {"nroFaixa": id_faixa, "codAlbum": id_album, "meio": meio, "codPlay": id_play})):
             return False
+
+def show_albuns_faixas():
+    show_entity("albuns")
+    id_album = int(input("informe o id do álbum: "))
+    show_entity(f"albuns/{id_album}/faixas")
+    return id_album
+
+def red_str(str):
+    return '\033[31m'+str+'\033[0;0m'
 
 def create_playlist ():
     id_play = int(input('Informe o identificador da playlist: '))
     name    = input('Informe o nome da playlist: ')
 
     if not insert_data("playlists", {"id": id_play, "nome": name}):
-        print("Não foi possível criar a playlist")
+        print(red_str("Não foi possível criar a playlist"))
         return
     
-    while(input("Adicionar faixa? [S/n]") in ('Ss', '')):
-        show_entity("albuns")
-        id_album = int(input("informe o id do álbum: "))
-        show_entity_by_id("faixas/albuns", id_album)
-        insert_faixa_in_playlist(id_play)
-        
+    if (input("Adicionar faixa? [S/n]") in ('Ss', '')):
+        id_album = show_albuns_faixas()
+        insert_faixa_in_playlist(id_album, id_play)
+
+def delete_playlist ():
+    id_play = int(input('Informe o identificador da playlist: '))
+    if not remove_data("playlists", {"id": id_play}):
+        print(red_str("Não foi possível remover a playlist, verifique se ela ainda possui faixas"))
+
 def manage_playlists():
     id_play = int(input("Informe o id da playlist: "))
-    show_entity_by_id("faixasplaylists", id_play)
+    show_entity(f"playlists/{id_play}/faixas")
     op = input("[r]emover ou [i]nserir faixas? (outro p/ voltar)")
     
-    if op == 'r' and not remove_faixa_from_playlist(id_play):
-        print("Não foi possível remover faixa.")
-    if op == 'i' and not insert_faixa_in_playlist(id_play):
-        print("Não foi possível inserir faixa.")
+    if op == 'r':
+        id_album = int(input("Informe o id do álbum: "))
+        if not remove_faixa_from_playlist(id_album, id_play):
+            print(red_str("Não foi possível remover faixa."))
+    if op == 'i':
+        id_album = show_albuns_faixas()
+        if not insert_faixa_in_playlist(id_album, id_play):
+            print(red_str("Não foi possível inserir faixa."))
     else:
         return
 
@@ -80,10 +97,13 @@ def manage_playlists():
 if __name__ == '__main__':
     while True:
         show_entity("playlists")
-        op = input("[c]riar ou [g]erenciar playlists ([s]air)? ")
+        op = input("[c]riar, [a]pagar ou [g]erenciar playlists ([s]air)? ")
         if op == 'c':
             create_playlist()
-        if op == 'g':
+        elif op == 'a':
+            delete_playlist()
+        elif op == 'g':
             manage_playlists()
-        if op == 's':
+        elif op == 's':
+            print(red_str("Saindo..."))
             break
